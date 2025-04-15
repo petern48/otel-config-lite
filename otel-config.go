@@ -1,9 +1,8 @@
-package mapreduce
+package main
 
 import (
-	// Required ackage installations
-	// go get "go.opentelemetry.io/contrib/exporters/autoexport"
-	// go get go.opentelemetry.io/contrib/bridges/otelslog
+	// Install required packages
+	// go get "go.opentelemetry.io/contrib/exporters/autoexport" "go.opentelemetry.io/contrib/bridges/otelslog"
 	"os"
 	"context"
 	"log"
