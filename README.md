@@ -44,7 +44,12 @@ docker run -p 3000:3000 -p 4317:4317 -p 4318:4318 --rm -ti --name grafana grafan
 > Cannot connect to the Docker daemon at > unix:///var/run/docker.sock. Is the docker daemon running?
 > ```
 
-After a few seconds (around 30 seconds or maybe less) you should see the program hanging after outputing some text, here's what the end of that text looks like:
+After a few seconds (around 30 seconds or maybe less) you should see the program hanging after outputing some text.
+
+Here's what the end of that text looks like:
+<details>
+<summary>Example Output</summary>
+
 ```
 Startup Time Summary:
 ---------------------
@@ -60,8 +65,9 @@ Open ports:
  - 4318: OpenTelemetry HTTP endpoint
  - 3000: Grafana. User: admin, password: admin
 ```
+</details>
 
-As this command runs, you can send now open the grafana UI at [http://localhost:3000](http://localhost:3000) in your browser.
+While this command is running, you can now open the grafana UI at [http://localhost:3000](http://localhost:3000) in your browser.
 
 You can kill this command as normal using `ctrl + c`. When you do so, all of the data will be lost, and the browser will cease to run.
 > There are ways around this, but this is nice because it's easy to "reset" and not have to worry about accumulating too much data and permanently persisting to disk.
