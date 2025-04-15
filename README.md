@@ -31,7 +31,7 @@ go get "go.opentelemetry.io/contrib/exporters/autoexport" "go.opentelemetry.io/c
 
 There are two parts to this workflow:
 1) Run the Grafana stack on docker for ingesting and visualizing your telemetry data
-2) Instrument your code (which has `otel-config.go` in it) and run it to send your data to grafana.
+2) Run your code (which has `otel-config.go` in it) to send your telemetry data to grafana.
 
 To run the Grafana stack, run the following docker command in one terminal.
 ```bash
