@@ -39,16 +39,15 @@ docker run -p 3000:3000 -p 4317:4317 -p 4318:4318 --rm -ti --name grafana grafan
 ```
 <!-- docker run -p 3000:3000 -p 4317:4317 -p 4318:4318 --rm -ti --name grafana -v $(pwd)/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml -v $(pwd)/loki-config.yaml:/etc/loki/config.yaml grafana/otel-lgtm -->
 
->Note: If you run into the following error, it means you need to open the Docker Desktop app:
+> Note: If you run into the following error, it means you need to open the Docker Desktop app:
 > ```
 > Cannot connect to the Docker daemon at > unix:///var/run/docker.sock. Is the docker daemon running?
 > ```
 
-After a few seconds (around 30 seconds or maybe less) you should see the program hanging after outputing some text.
+After around 30 seconds, you should see the program hanging after outputing some text.
 
-Here's what the end of that text looks like:
 <details>
-<summary>Example Output</summary>
+<summary>Here's what the end of that text looks like:</summary>
 
 ```
 Startup Time Summary:
