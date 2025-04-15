@@ -4,27 +4,35 @@ import (
 	// Install required packages
 	// go get "go.opentelemetry.io/contrib/exporters/autoexport" "go.opentelemetry.io/contrib/bridges/otelslog"
 	"os"
+	"time"
 	"context"
-	"log"
 	"log/slog"
+	"net"
+	"net/url"
+	"strings"
 
-	"go.opentelemetry.io/otel"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
-	sdklog "go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/contrib/bridges/otelslog"
-	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/contrib/exporters/autoexport"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	"go.opentelemetry.io/otel/log/global"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
+// Set what endpoint you're going to send your telemetry data to
 const OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
 
 func init() {
-	// Set what endpoint you're going to send your telemetry data to
+	// If collector isn't running, skip setup to save the user unnecessary export error warnings
+	if !isOtelCollectorAvailable() {
+		return
+	}
 	os.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", OTEL_EXPORTER_OTLP_ENDPOINT)
 
 	ctx := context.Background()
-
+	const exportTimeout = 0 * time.Second  // don't retry so we don't get stuck if there's no ingest server
 	/////////////////////////////
 	// Configure traces export //
 	/////////////////////////////
@@ -32,16 +40,27 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	tracerProvider := sdktrace.NewTracerProvider(sdktrace.WithBatcher(traceExporter))
+	spanProcessor := sdktrace.NewBatchSpanProcessor(traceExporter, sdktrace.WithBatchTimeout(exportTimeout))
+	tracerProvider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanProcessor))
+	// sdktrace.WithBatcher(traceExporter)
 	otel.SetTracerProvider(tracerProvider)
+
 
 	//////////////////////////////
 	// Configure metrics export //
 	//////////////////////////////
-	metricReader, err := autoexport.NewMetricReader(ctx)
+	// metricReader, err := autoexport.NewMetricReader(ctx)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	metricExporter, err := otlpmetrichttp.New(ctx)
 	if err != nil {
 		panic(err)
 	}
+	metricReader := sdkmetric.NewPeriodicReader(
+		metricExporter,
+		sdkmetric.WithTimeout(exportTimeout),
+	)
 	meterProvider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(metricReader))
 	otel.SetMeterProvider(meterProvider)
 
@@ -53,8 +72,9 @@ func init() {
 		panic(err)
 	}
 
+	logProcessor := sdklog.NewBatchProcessor(logExporter, sdklog.WithExportTimeout(exportTimeout))
 	logProvider := sdklog.NewLoggerProvider(
-		sdklog.WithProcessor(sdklog.NewSimpleProcessor(logExporter)),  // for instant export 
+		sdklog.WithProcessor(logProcessor),
 	)
 	global.SetLoggerProvider(logProvider)
 
@@ -72,8 +92,8 @@ func init() {
 	/////////////////////////////////////////////
 	// Create Logs. multiple ways:
 	// Any logs created from the "log" or "slog" package are automatically exported
-	// e.g slog.Info("message") or log.Println("message")
-	log.Println("Configuring otel")
+	// log.Println("Otel configured")
+	// slog.Info("Otel configured")
 
 	// Create Metrics
 	// import "go.opentelemetry.io/otel/metric"
@@ -102,6 +122,26 @@ func init() {
 }
 
 
+func isOtelCollectorAvailable() bool {
+	address := tryStripHTTPPrefix(OTEL_EXPORTER_OTLP_ENDPOINT)
+	conn, err := net.DialTimeout("tcp", address, 500*time.Millisecond)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
+}
+
+// Remove the "http(s)://" part of the address if it's there
+func tryStripHTTPPrefix(address string) string {
+	if strings.HasPrefix(address, "http://") || strings.HasPrefix(address, "https://") {
+		u, err := url.Parse(address)
+		if err == nil {
+			return u.Host  // stripped prefix
+		}
+	}
+	return address
+}
 
 // I wanted to avoid an additionaly package installation so I manually implemented this for simplicity
 // This is simply so that we can forward logs both to stdout and export them through otel
@@ -148,4 +188,5 @@ func (h *MultiHandler) WithGroup(name string) slog.Handler {
     }
     return NewMultiHandler(newHandlers...)
 }
+
 
