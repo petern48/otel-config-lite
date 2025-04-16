@@ -24,6 +24,9 @@ import (
 // Set what endpoint you're going to send your telemetry data to
 const OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
 
+// true: also log to stdout. false: don't log to stdout. (will export to otel regardless if endpoint works)
+const LOGTOSTDOUT = true
+
 func init() {
 	// If collector isn't running, skip setup to save the user unnecessary export error warnings
 	if !isOtelCollectorAvailable() {
@@ -81,8 +84,10 @@ func init() {
 	logHandlers := []slog.Handler{
 		// Handler to send logs to otel endpoint
 		otelslog.NewHandler("otel"),
+	}
+	if LOGTOSTDOUT {
 		// Handler to send logs to stdout. Set to the most permissive level (LevelDebug), don't change this
-		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
+		logHandlers = append(logHandlers, slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	}
 	logger := slog.New(NewMultiHandler(logHandlers...))
 	slog.SetDefault(logger)
