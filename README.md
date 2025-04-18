@@ -74,3 +74,5 @@ You can kill this command as normal using `ctrl + c`. When you do so, all of the
 Run your program and see your data show up in the UI.
 
 For examples of how to instrument your program to generate telemetry data, see the [official OpenTelemetry Go docs](https://opentelemetry.io/docs/languages/go/getting-started/#add-custom-instrumentation).
+
+Note: for logs to be exported, you need to use the `"log"` or `"slog"` package. If you currently, use the `"fmt"` package, you can replace all occurences with `log`. (e.g `log.Printf()`, `log.Println()`). These will automatically be exported to grafana (if it's running).
