@@ -19,20 +19,27 @@ import (
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Set what endpoint you're going to send your telemetry data to
-const OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
+// You can set the env var OTEL_EXPORTER_OTLP_ENDPOINT to a different value to override this (e.g a ngrok endpoint :)
+const DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318"
 
 // true: also log to stdout. false: don't log to stdout. (will export to otel regardless if endpoint works)
 const LOGTOSTDOUT = true
+
+var tracer trace.Tracer = nil
 
 func init() {
 	// If collector isn't running, skip setup to save the user unnecessary export error warnings
 	if !isOtelCollectorAvailable() {
 		return
 	}
-	os.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", OTEL_EXPORTER_OTLP_ENDPOINT)
+	_, ok := os.LookupEnv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if !ok {
+		os.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT)
+	}
 
 	ctx := context.Background()
 	const exportTimeout = 0 * time.Second  // don't retry so we don't get stuck if there's no ingest server
@@ -45,7 +52,7 @@ func init() {
 	}
 	spanProcessor := sdktrace.NewBatchSpanProcessor(traceExporter, sdktrace.WithBatchTimeout(exportTimeout))
 	tracerProvider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanProcessor))
-	// sdktrace.WithBatcher(traceExporter)
+	tracer = otel.Tracer("test_tracer")
 	otel.SetTracerProvider(tracerProvider)
 
 
@@ -112,7 +119,7 @@ func init() {
 	// testCnt.Add(ctx, 1, metric.WithAttributes(metricAttr))  // Increment the counter
 
 	// Create Traces
-	// tracer := otel.Tracer("test_tracer")
+	tracer = otel.Tracer("test_tracer")
 	// ctx, span := tracer.Start(ctx, "test_span")
 	// (operation should occur completely between span creation and end)
 	// defer span.End()
@@ -128,7 +135,7 @@ func init() {
 
 
 func isOtelCollectorAvailable() bool {
-	address := tryStripHTTPPrefix(OTEL_EXPORTER_OTLP_ENDPOINT)
+	address := tryStripHTTPPrefix(DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT)
 	conn, err := net.DialTimeout("tcp", address, 500*time.Millisecond)
 	if err != nil {
 		return false
@@ -193,5 +200,3 @@ func (h *MultiHandler) WithGroup(name string) slog.Handler {
     }
     return NewMultiHandler(newHandlers...)
 }
-
-
