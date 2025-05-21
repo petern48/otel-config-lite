@@ -34,6 +34,7 @@ var tracer trace.Tracer = nil
 func init() {
 	// If collector isn't running, skip setup to save the user unnecessary export error warnings
 	if !isOtelCollectorAvailable() {
+		panic("no otel collector running")
 		return
 	}
 	_, ok := os.LookupEnv("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -135,7 +136,12 @@ func init() {
 
 
 func isOtelCollectorAvailable() bool {
-	address := tryStripHTTPPrefix(DEFAULT_OTEL_EXPORTER_OTLP_ENDPOINT)
+	otel_endpoint, ok := os.LookupEnv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if !ok {
+		panic("logical error:OTEL_EXPORTER_OTLP_ENDPOINT not set")
+		return false
+	}
+	address := tryStripHTTPPrefix(otel_endpoint)
 	conn, err := net.DialTimeout("tcp", address, 500*time.Millisecond)
 	if err != nil {
 		return false
